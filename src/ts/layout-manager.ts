@@ -104,6 +104,11 @@ export abstract class LayoutManager extends EventEmitter {
     readonly isSubWindow: boolean;
     layoutConfig: ResolvedLayoutConfig;
 
+    // SS
+    public canCloseComponentItemHandler: LayoutManager.CanCloseComponentItemCallback | undefined;
+    public dragOverHandler: LayoutManager.DragOverCallback | undefined;
+    public dragStartHandler: LayoutManager.DragStartCallback | undefined;
+
     /**
      * If a new component is required and:
      * 1. a component type with corresponding name is not registered, and
@@ -153,7 +158,7 @@ export abstract class LayoutManager extends EventEmitter {
     * @param container - A Dom HTML element. Defaults to body
     * @internal
     */
-    constructor(parameters: LayoutManager.ConstructorParameters) {        
+    constructor(parameters: LayoutManager.ConstructorParameters) {
         super();
 
         let layoutConfig = parameters.layoutConfig;
@@ -246,10 +251,10 @@ export abstract class LayoutManager extends EventEmitter {
         } else {
             if (componentConstructorOrFactoryFtn.hasOwnProperty('prototype')) {
                 const componentConstructor = componentConstructorOrFactoryFtn as LayoutManager.ComponentConstructor;
-                this.registerComponentConstructor(name, componentConstructor);   
+                this.registerComponentConstructor(name, componentConstructor);
             } else {
                 const componentFactoryFtn = componentConstructorOrFactoryFtn as LayoutManager.ComponentFactoryFunction;
-                this.registerComponentFactoryFunction(name, componentFactoryFtn);   
+                this.registerComponentFactoryFunction(name, componentFactoryFtn);
             }
         }
     }
@@ -487,7 +492,7 @@ export abstract class LayoutManager extends EventEmitter {
                     rootItemConfig = undefined;
                 } else {
                     rootItemConfig = groundContent[0];
-                }                
+                }
 
                 /*
                 * Retrieve config for subwindows
@@ -501,12 +506,12 @@ export abstract class LayoutManager extends EventEmitter {
                 const config: ResolvedLayoutConfig = {
                     root: rootItemConfig,
                     openPopouts,
-                    settings:  ResolvedLayoutConfig.Settings.createCopy(this.layoutConfig.settings),
+                    settings: ResolvedLayoutConfig.Settings.createCopy(this.layoutConfig.settings),
                     dimensions: ResolvedLayoutConfig.Dimensions.createCopy(this.layoutConfig.dimensions),
                     header: ResolvedLayoutConfig.Header.createCopy(this.layoutConfig.header),
                     resolved: true,
                 }
-        
+
                 return config;
             }
         }
@@ -546,7 +551,7 @@ export abstract class LayoutManager extends EventEmitter {
      */
     newComponentAtLocation(componentType: JsonValue, componentState?: JsonValue, title?: string,
         locationSelectors?: LayoutManager.LocationSelector[]
-    ): ComponentItem | undefined{
+    ): ComponentItem | undefined {
         if (this._groundItem === undefined) {
             throw new Error('Cannot add component before init');
         } else {
@@ -598,7 +603,7 @@ export abstract class LayoutManager extends EventEmitter {
             componentState,
             title,
         };
-        
+
         return this.addItemAtLocation(itemConfig, locationSelectors);
     }
 
@@ -608,7 +613,7 @@ export abstract class LayoutManager extends EventEmitter {
      * @param itemConfig - ResolvedItemConfig of child to be added.
      * @returns New ContentItem created.
     */
-   newItem(itemConfig: RowOrColumnItemConfig | StackItemConfig | ComponentItemConfig): ContentItem {
+    newItem(itemConfig: RowOrColumnItemConfig | StackItemConfig | ComponentItemConfig): ContentItem {
         const contentItem = this.newItemAtLocation(itemConfig);
         if (contentItem === undefined) {
             throw new AssertError('LMNC65588');
@@ -962,7 +967,7 @@ export abstract class LayoutManager extends EventEmitter {
     /** @internal */
     createPopoutFromPopoutLayoutConfig(config: ResolvedPopoutLayoutConfig): BrowserPopout {
         const configWindow = config.window;
-        const initialWindow: Rect = { 
+        const initialWindow: Rect = {
             left: configWindow.left ?? (globalThis.screenX || globalThis.screenLeft + 20),
             top: configWindow.top ?? (globalThis.screenY || globalThis.screenTop + 20),
             width: configWindow.width ?? 500,
@@ -990,8 +995,8 @@ export abstract class LayoutManager extends EventEmitter {
      * @param componentState - Optional initial state of component.  This will be ignored if componentTypeOrFtn is a function
      *
      * @returns 1) an opaque object that identifies the DOM element
-	 *          and the attached itemConfig. This can be used in
-	 *          removeDragSource() later to get rid of the drag listeners.
+     *          and the attached itemConfig. This can be used in
+     *          removeDragSource() later to get rid of the drag listeners.
      *          2) undefined if constrainDragToContainer is specified
      */
     newDragSource(element: HTMLElement,
@@ -1006,24 +1011,29 @@ export abstract class LayoutManager extends EventEmitter {
     }
 
     /**
-	 * Removes a DragListener added by createDragSource() so the corresponding
-	 * DOM element is not a drag source any more.
-	 */
-	removeDragSource(dragSource: DragSource): void {
-		removeFromArray(dragSource, this._dragSources );
-		dragSource.destroy();
+     * Removes a DragListener added by createDragSource() so the corresponding
+     * DOM element is not a drag source any more.
+     */
+    removeDragSource(dragSource: DragSource): void {
+        removeFromArray(dragSource, this._dragSources);
+        dragSource.destroy();
     }
-    
+
     /** @internal */
     startComponentDrag(x: number, y: number, dragListener: DragListener, componentItem: ComponentItem, stack: Stack): void {
-        new DragProxy(
-            x,
-            y,
-            dragListener,
-            this,
-            componentItem,
-            stack
-        );
+        if (this.dragStartHandler != null && this.dragStartHandler(x, y, componentItem, stack) === false) {
+            dragListener.cancelDrag();
+        }
+        else {
+            new DragProxy(
+                x,
+                y,
+                dragListener,
+                this,
+                componentItem,
+                stack
+            );
+        }
     }
 
     /**
@@ -1174,12 +1184,12 @@ export abstract class LayoutManager extends EventEmitter {
 
     /** @internal */
     private cleanupBeforeMaximisedStackDestroyed(event: EventEmitter.BubblingEvent) {
-		if (this._maximisedStack !== null && this._maximisedStack === event.target) {
-			this._maximisedStack.off('beforeItemDestroyed', this._maximisedStackBeforeDestroyedListener);
-			this._maximisedStack = undefined;
-		}
+        if (this._maximisedStack !== null && this._maximisedStack === event.target) {
+            this._maximisedStack.off('beforeItemDestroyed', this._maximisedStackBeforeDestroyedListener);
+            this._maximisedStack = undefined;
+        }
     }
-    
+
     /**
      * This method is used to get around sandboxed iframe restrictions.
      * If 'allow-top-navigation' is not specified in the iframe's 'sandbox' attribute
@@ -1196,23 +1206,66 @@ export abstract class LayoutManager extends EventEmitter {
         globalThis.setTimeout(() => globalThis.close(), 1);
     }
 
+    /**
+     * Gets the best contentItem Area for the coordinates provided
+     */
     /** @internal */
-    getArea(x: number, y: number): ContentItem.Area | null {
+    getDropArea(x: number, y: number, dragListener: DragListener, dragSource: ComponentItem): ContentItem.Area | null {
         let mathingArea = null;
         let smallestSurface = Infinity;
 
         for (let i = 0; i < this._itemAreas.length; i++) {
             const area = this._itemAreas[i];
 
-            if (
-                x > area.x1 &&
+            if (x > area.x1 &&
                 x < area.x2 &&
                 y > area.y1 &&
                 y < area.y2 &&
-                smallestSurface > area.surface
-            ) {
-                smallestSurface = area.surface;
-                mathingArea = area;
+                smallestSurface > area.surface) {
+                var targetStackSegment: LayoutManager.DragPanelTarget | undefined = undefined;
+
+                if (area.contentItem instanceof GroundItem) {
+                    var groundAreas = area.contentItem.createSideAreas();
+                    for (var gas of groundAreas) {
+                        if (x > gas.x1 &&
+                            x < gas.x2 &&
+                            y > gas.y1 &&
+                            y < gas.y2) {
+                            if (gas.side == 'x1')
+                                targetStackSegment = LayoutManager.DragPanelTarget.Right;
+                            else if (gas.side == 'x2')
+                                targetStackSegment = LayoutManager.DragPanelTarget.Left;
+                            else if (gas.side == 'y1')
+                                targetStackSegment = LayoutManager.DragPanelTarget.Bottom;
+                            else if (gas.side == 'y2')
+                                targetStackSegment = LayoutManager.DragPanelTarget.Top;
+                            //console.debug(`X:${x} Y:${y} ${targetStackSegment} X(${gas.x1}-${gas.x2}) Y(${gas.y1}-${gas.y2})`);
+                            break;
+                        }
+                    }
+                }
+
+                if (area.contentItem instanceof Stack &&
+                    area.contentItem.contentAreaDimensions != undefined) {
+                    for (var areaName of Object.keys(area.contentItem.contentAreaDimensions)) {
+                        var cad = area.contentItem.contentAreaDimensions[areaName];
+                        if (x > cad.hoverArea.x1 &&
+                            x < cad.hoverArea.x2 &&
+                            y > cad.hoverArea.y1 &&
+                            y < cad.hoverArea.y2) {
+                            //console.debug(`X:${x} Y:${y} ${areaName} X(${cad.hoverArea.x1}-${cad.hoverArea.x2}) Y(${cad.hoverArea.y1}-${cad.hoverArea.y2})`);
+                            targetStackSegment = <LayoutManager.DragPanelTarget>areaName;
+                            break;
+                        }
+                    }
+                }
+
+                if (this.dragOverHandler == undefined ||
+                    this.dragOverHandler(x, y, dragSource, area.contentItem, targetStackSegment)) {
+                    //console.debug(`dragOver from ${dragSource.title} to ${area.contentItem.id}`);
+                    smallestSurface = area.surface;
+                    mathingArea = area;
+                }
             }
         }
 
@@ -1462,8 +1515,7 @@ export abstract class LayoutManager extends EventEmitter {
             if (this.useResponsiveLayout() &&
                 !this._updatingColumnsResponsive &&
                 this._groundItem.contentItems.length > 0 &&
-                this._groundItem.contentItems[0].isRow)
-            {
+                this._groundItem.contentItems[0].isRow) {
                 if (this._groundItem === undefined || this._width === null) {
                     throw new UnexpectedUndefinedError('LMACR77412');
                 } else {
@@ -1776,7 +1828,20 @@ export abstract class LayoutManager extends EventEmitter {
 
 /** @public */
 export namespace LayoutManager {
-    export type ComponentConstructor = new(container: ComponentContainer, state: JsonValue | undefined) => ComponentItem.Component;
+    // SS
+    export const enum DragPanelTarget {
+        Header = 'header',
+        Left = 'left',
+        Right = 'right',
+        Top = 'top',
+        Bottom = 'bottom',
+    };
+    export type CanCloseComponentItemCallback = (componentItem: ComponentItem) => boolean
+    export type DragOverCallback = (x: number, y: number, dragSource: ComponentItem, dragTarget: ContentItem, targetPanel?: DragPanelTarget) => boolean
+    export type DragStartCallback = (originalX: number, originalY: number, componentItem: ComponentItem, stack: Stack) => boolean;
+
+
+    export type ComponentConstructor = new (container: ComponentContainer, state: JsonValue | undefined) => ComponentItem.Component;
     export type ComponentFactoryFunction = (container: ComponentContainer, state: JsonValue | undefined) => ComponentItem.Component;
     export type GetComponentConstructorCallback = (this: void, config: ResolvedComponentItemConfig) => ComponentConstructor
     export type GetComponentEventHandler =

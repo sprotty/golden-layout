@@ -1,4 +1,4 @@
-import { ComponentItemConfig, ContentItem, DragSource, EventEmitter, GoldenLayout, LayoutConfig, ResolvedLayoutConfig, Stack } from '..';
+import { ComponentItem, ComponentItemConfig, ContentItem, DragSource, EventEmitter, GoldenLayout, LayoutConfig, LayoutManager, ResolvedLayoutConfig, Stack } from '..';
 import { BooleanComponent } from './boolean-component';
 import { ColorComponent } from './color-component';
 import { Layout, prefinedLayouts } from './predefined-layouts';
@@ -56,6 +56,12 @@ export class App {
         this._goldenLayout = new GoldenLayout(this._layoutElement);
         this._goldenLayout.registerComponentConstructor(ColorComponent.typeName, ColorComponent);
         this._goldenLayout.addEventListener('stackHeaderClick', (event) => this.handleStackHeaderClick(event));
+
+        this._goldenLayout.canCloseComponentItemHandler = (ci)=>confirm( 'really close this?' );
+        this._goldenLayout.dragStartHandler = this.handleDragStart;
+        this._goldenLayout.dragOverHandler = this.handleDragOver;
+        
+        
 
         const registerExtraComponentTypesButton = document.querySelector('#registerExtraComponentTypesButton') as HTMLButtonElement;
         if (registerExtraComponentTypesButton === null) {
@@ -211,6 +217,15 @@ export class App {
 
     private handleLayoutSelectChange() {
         // nothing to do here
+    }
+
+    private handleDragStart(originalX: number, originalY: number, componentItem: ComponentItem, stack: Stack) :boolean{
+        // return false to prevent the componentItem from being dragged
+        return true;
+    }
+    private handleDragOver(originalX: number, originalY: number, dragSource: ComponentItem, dragTarget: ContentItem, targetPanel?: LayoutManager.DragPanelTarget) :boolean{
+        // return false to prevent dropping on the given target
+        return true;
     }
 
     private handleStackHeaderClick(event: EventEmitter.ClickBubblingEvent) {

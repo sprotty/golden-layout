@@ -173,7 +173,7 @@ export class DragProxy extends EventEmitter {
     private setDropPosition(x: number, y: number): void {
         this._element.style.left = numberToPixels(x);
         this._element.style.top = numberToPixels(y);
-        this._area = this._layoutManager.getArea(x, y);
+        this._area = this._layoutManager.getDropArea(x, y, this._dragListener, this._componentItem);
 
         if (this._area !== null) {
             this._lastValidArea = this._area;

@@ -229,6 +229,11 @@ export class Tab {
      * @internal
      */
     private onCloseClick() {
+        // SS - ignore close if requested
+        if (this._layoutManager.canCloseComponentItemHandler != undefined &&
+            this._layoutManager.canCloseComponentItemHandler(this.componentItem) === false)
+            return; 
+
         this.notifyClose();
     }
 

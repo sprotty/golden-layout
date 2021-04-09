@@ -914,6 +914,8 @@ export abstract class LayoutManager extends EventEmitter {
     // @internal (undocumented)
     calculateItemAreas(): void;
     // (undocumented)
+    canCloseComponentItemHandler: LayoutManager.CanCloseComponentItemCallback | undefined;
+    // (undocumented)
     checkMinimiseMaximisedStack(): void;
     clearComponentFocus(suppressEvent?: boolean): void;
     // @internal
@@ -930,6 +932,10 @@ export abstract class LayoutManager extends EventEmitter {
     // @internal (undocumented)
     createPopoutFromPopoutLayoutConfig(config: ResolvedPopoutLayoutConfig): BrowserPopout;
     destroy(): void;
+    // (undocumented)
+    dragOverHandler: LayoutManager.DragOverCallback | undefined;
+    // (undocumented)
+    dragStartHandler: LayoutManager.DragStartCallback | undefined;
     // Warning: (ae-forgotten-export) The symbol "DropTargetIndicator" needs to be exported by the entry point index.d.ts
     //
     // @internal (undocumented)
@@ -944,11 +950,11 @@ export abstract class LayoutManager extends EventEmitter {
     // (undocumented)
     get focusedComponentItem(): ComponentItem | undefined;
     // @internal (undocumented)
-    getArea(x: number, y: number): ContentItem.Area | null;
-    // @internal (undocumented)
     getComponent(container: ComponentContainer, itemConfig: ResolvedComponentItemConfig): ComponentItem.Component;
     getComponentEvent: LayoutManager.GetComponentEventHandler | undefined;
     getComponentInstantiator(config: ResolvedComponentItemConfig): LayoutManager.ComponentInstantiator | undefined;
+    // @internal (undocumented)
+    getDropArea(x: number, y: number, dragListener: DragListener, dragSource: ComponentItem): ContentItem.Area | null;
     // (undocumented)
     getRegisteredComponentTypeNames(): string[];
     // Warning: (ae-forgotten-export) The symbol "GroundItem" needs to be exported by the entry point index.d.ts
@@ -1024,6 +1030,8 @@ export abstract class LayoutManager extends EventEmitter {
 // @public (undocumented)
 export namespace LayoutManager {
     // (undocumented)
+    export type CanCloseComponentItemCallback = (componentItem: ComponentItem) => boolean;
+    // (undocumented)
     export type ComponentConstructor = new (container: ComponentContainer, state: JsonValue | undefined) => ComponentItem.Component;
     // (undocumented)
     export type ComponentFactoryFunction = (container: ComponentContainer, state: JsonValue | undefined) => ComponentItem.Component;
@@ -1047,6 +1055,23 @@ export namespace LayoutManager {
     export function createMaximisePlaceElement(document: Document): HTMLElement;
     // (undocumented)
     export function createTabDropPlaceholderElement(document: Document): HTMLElement;
+    // (undocumented)
+    export type DragOverCallback = (x: number, y: number, dragSource: ComponentItem, dragTarget: ContentItem, targetPanel?: DragPanelTarget) => boolean;
+    // (undocumented)
+    export const enum DragPanelTarget {
+        // (undocumented)
+        Bottom = "bottom",
+        // (undocumented)
+        Header = "header",
+        // (undocumented)
+        Left = "left",
+        // (undocumented)
+        Right = "right",
+        // (undocumented)
+        Top = "top"
+    }
+    // (undocumented)
+    export type DragStartCallback = (originalX: number, originalY: number, componentItem: ComponentItem, stack: Stack) => boolean;
     // (undocumented)
     export type GetComponentConstructorCallback = (this: void, config: ResolvedComponentItemConfig) => ComponentConstructor;
     // (undocumented)
